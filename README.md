@@ -138,4 +138,4 @@ Please leave your feedback. When I have some free time, I'll do my best to addre
 
 ## Can I use this tool freely?
 
-Absolutely! Feel free to use it in your projects, modify it, and improve it. However, please do not sell it or profit directly from it, as it's intended to remain free.
+Absolutely! Feel free to use it in your projects, including commercial ones. You can modify and improve it as you like. However, please do not sell or redistribute the asset itself as a standalone product—it’s meant to remain free.
