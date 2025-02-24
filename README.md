@@ -1,5 +1,5 @@
 ## Updates:
-- Add Low mode (normalized positions and normals [0..1], TextureFormat.RGBA32)
+- Add Low mode (Very small texture size, normalized positions and normals [0..1], TextureFormat.RGBA32)
 
 # Unity VAT Baker ![GitHub License](https://img.shields.io/github/license/Mamantenok1599/UnityVATBaker)
 
