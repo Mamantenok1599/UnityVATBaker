@@ -202,7 +202,7 @@ MonoBehaviour:
     - rid: 6856660213001355518
       type: {class: SplineAutoDolly/FixedSpeed, ns: Unity.Cinemachine, asm: Unity.Cinemachine}
       data:
-        Speed: 0.02
+        Speed: 2
 --- !u!114 &157755016
 MonoBehaviour:
   m_ObjectHideFlags: 0
@@ -1301,7 +1301,7 @@ MonoBehaviour:
   m_Name: 
   m_EditorClassIdentifier: 
   mesh: {fileID: -8352047198242452271, guid: 0c735acf350331b4d97c36444245490e, type: 3}
-  instancedMaterial: {fileID: 2100000, guid: b68485e64e991b8468664a0f8286b7ca, type: 2}
+  instancedMaterial: {fileID: 2100000, guid: 3c8096435db09a340b4b4f56a735082c, type: 2}
   instanceCount: 1000
   spawnAreaSize: {x: 100, y: 0, z: 100}
   spawnAreaCenter: {x: 0, y: 0, z: 0}

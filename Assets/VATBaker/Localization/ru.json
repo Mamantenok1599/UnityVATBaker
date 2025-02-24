@@ -33,6 +33,7 @@
     { "key": "HelpBoxMesh", "value": "Выбранный объект не содержит mesh. Пожалуйста, назначте mesh в SkinnedMeshRenderer." },
     { "key": "HelpBoxAnimator", "value": "Выбранный объект не содержит Animator компонент. Пожалуйста, добавьте Animator компонент к объекту." },
     { "key": "HelpBoxAnimations", "value": "Animator Controller не содержит анимационных клипов. Пожалуйста, добавьте анимации в контроллер." },
-    { "key": "HelpBoxAnimatorController", "value": "Animator не имеет назначенного контроллера. Пожалуйста, назначьте Animator Controller." }
+    { "key": "HelpBoxAnimatorController", "value": "Animator не имеет назначенного контроллера. Пожалуйста, назначьте Animator Controller." },
+    { "key": "QualityMode", "value": "Режим качества" }
   ]
 }

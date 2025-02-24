@@ -33,6 +33,7 @@
     { "key": "HelpBoxMesh", "value": "The selected object does not contain a mesh. Please assign a mesh to the SkinnedMeshRenderer." },
     { "key": "HelpBoxAnimator", "value": "The selected object does not contain an Animator component. Please add an Animator component to the object." },
     { "key": "HelpBoxAnimations", "value": "The Animator Controller does not contain any animation clips. Please add animations to the controller." },
-    { "key": "HelpBoxAnimatorController", "value": "The Animator does not have an assigned controller. Please assign an Animator Controller." }
+    { "key": "HelpBoxAnimatorController", "value": "The Animator does not have an assigned controller. Please assign an Animator Controller." },
+    { "key": "QualityMode", "value": "Quality Mode" }
   ]
 }

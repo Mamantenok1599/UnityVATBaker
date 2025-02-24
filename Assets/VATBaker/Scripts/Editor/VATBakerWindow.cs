@@ -6,6 +6,12 @@ using UnityEngine.Rendering.Universal;
 
 namespace VATBaker.Scripts.Editor
 {
+    public enum QualityMode
+    {
+        Low,
+        High
+    }
+
     public class VATBakerWindow : EditorWindow
     {
         [MenuItem("Tools/VAT Baker")]
@@ -25,6 +31,7 @@ namespace VATBaker.Scripts.Editor
         private int _textureResolution = 512;
 
         private bool _bakeNormals = true;
+        private QualityMode _qualityMode = QualityMode.High;
 
         private Mesh _bakedMesh;
         private string _outputPath = "Assets/VATBaker/Textures";
@@ -45,22 +52,26 @@ namespace VATBaker.Scripts.Editor
 
         private Bounds _previewBounds;
 
-        private string[] languages = new[] {"English", "Русский", "简体中文", "日本語"};
-        private string[] languageCodes = new[] {"en", "ru", "zh", "ja"};
-        private int selectedLanguageIndex = 0;
+        private readonly string[] _languages = new[] {"English", "Русский", "简体中文", "日本語"};
+        private readonly string[] _languageCodes = new[] {"en", "ru", "zh", "ja"};
+        private int _selectedLanguageIndex;
+
+        private Vector3 _lastMinPos = Vector3.zero;
+        private Vector3 _lastSize   = Vector3.zero;
+        private bool _hasBoundsData;
 
         private void OnEnable()
         {
-            LocalizationManager.LoadLocalization(languageCodes[selectedLanguageIndex]);
+            LocalizationManager.LoadLocalization(_languageCodes[_selectedLanguageIndex]);
         }
 
         private void OnGUI()
         {
-            int newLanguageIndex = EditorGUILayout.Popup("Language", selectedLanguageIndex, languages);
-            if (newLanguageIndex != selectedLanguageIndex)
+            int newLanguageIndex = EditorGUILayout.Popup("Language", _selectedLanguageIndex, _languages);
+            if (newLanguageIndex != _selectedLanguageIndex)
             {
-                selectedLanguageIndex = newLanguageIndex;
-                LocalizationManager.LoadLocalization(languageCodes[selectedLanguageIndex]);
+                _selectedLanguageIndex = newLanguageIndex;
+                LocalizationManager.LoadLocalization(_languageCodes[_selectedLanguageIndex]);
             }
 
             EditorGUILayout.LabelField(LocalizationManager.Localize("LabelSelectTargetObject"), EditorStyles.boldLabel);
@@ -109,6 +120,15 @@ namespace VATBaker.Scripts.Editor
             if (!hasErrors)
             {
                 DrawUI();
+
+                if (_hasBoundsData)
+                {
+                    EditorGUILayout.Space();
+                    EditorGUILayout.LabelField("Last Baked Bounds:", EditorStyles.boldLabel);
+                    EditorGUILayout.LabelField("Min:", _lastMinPos.ToString("F4"));
+                    EditorGUILayout.LabelField("Size:", _lastSize.ToString("F4"));
+                }
+
                 EditorGUILayout.Space();
                 Rect previewRect = GUILayoutUtility.GetRect(256, 256, GUILayout.ExpandWidth(true));
                 DrawPreview(previewRect);
@@ -183,6 +203,9 @@ namespace VATBaker.Scripts.Editor
                 EditorGUILayout.Toggle(new GUIContent(LocalizationManager.Localize("LabelBakeNormals"),
                         LocalizationManager.Localize("TooltipBakeNormals")),
                     _bakeNormals);
+
+            _qualityMode = (QualityMode) EditorGUILayout.EnumPopup(LocalizationManager.Localize("QualityMode"), _qualityMode);
+
             _outputPath =
                 EditorGUILayout.TextField(new GUIContent(LocalizationManager.Localize("LabelOutputPath"),
                         LocalizationManager.Localize("TooltipOutputPath")),
@@ -274,11 +297,9 @@ namespace VATBaker.Scripts.Editor
             }
 
             float clipFrameRate = _selectedClip.frameRate;
-
             int startFrame = _startFrame;
             int endFrame = _endFrame;
             int frameStep = _frameStep;
-
             int frameCount = ((endFrame - startFrame) / frameStep) + 1;
 
             Mesh mesh = new Mesh();
@@ -290,11 +311,14 @@ namespace VATBaker.Scripts.Editor
             int rowsPerFrame = Mathf.CeilToInt((float) pixelsPerFrame / textureWidth);
             int textureHeight = Mathf.NextPowerOfTwo(frameCount * rowsPerFrame);
 
-            Texture2D positionTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBAHalf, false);
+            TextureFormat posFormat = (_qualityMode == QualityMode.High) ? TextureFormat.RGBAHalf : TextureFormat.RGBA32;
+            Texture2D positionTexture = new Texture2D(textureWidth, textureHeight, posFormat, false);
+
             Texture2D normalTexture = null;
             if (_bakeNormals)
             {
-                normalTexture = new Texture2D(textureWidth, textureHeight, TextureFormat.RGBAHalf, false);
+                TextureFormat normFormat = (_qualityMode == QualityMode.High) ? TextureFormat.RGBAHalf : TextureFormat.RGBA32;
+                normalTexture = new Texture2D(textureWidth, textureHeight, normFormat, false);
             }
 
             Color[] positionColors = new Color[textureWidth * textureHeight];
@@ -304,8 +328,10 @@ namespace VATBaker.Scripts.Editor
                 normalColors = new Color[textureWidth * textureHeight];
             }
 
-            EditorUtility.DisplayProgressBar("Baking VAT", "Initializing...", 0f);
+            Vector3 minPos = new Vector3(float.MaxValue, float.MaxValue, float.MaxValue);
+            Vector3 maxPos = new Vector3(float.MinValue, float.MinValue, float.MinValue);
 
+            EditorUtility.DisplayProgressBar("Baking VAT", "Initializing...", 0f);
             GameObject bakingInstance = Instantiate(_targetObject);
             bakingInstance.hideFlags = HideFlags.HideAndDontSave;
             
@@ -318,6 +344,37 @@ namespace VATBaker.Scripts.Editor
             {
                 _bakedMesh = new Mesh();
             }
+
+            if (_qualityMode == QualityMode.Low)
+            {
+                for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
+                {
+                    float progress = (float) frameIndex / frameCount;
+                    EditorUtility.DisplayProgressBar("Baking VAT", $"Scanning frame {frameIndex + 1}/{frameCount}",
+                        progress);
+
+                    int currentFrame = startFrame + frameIndex * frameStep;
+                    float time = currentFrame / clipFrameRate;
+                    _selectedClip.SampleAnimation(bakingInstance, time);
+                    smr.BakeMesh(_bakedMesh);
+
+                    Vector3[] verts = _bakedMesh.vertices;
+                    for (int v = 0; v < vertexCount; v++)
+                    {
+                        Vector3 p = verts[v];
+                        if (p.x < minPos.x) minPos.x = p.x;
+                        if (p.y < minPos.y) minPos.y = p.y;
+                        if (p.z < minPos.z) minPos.z = p.z;
+                        if (p.x > maxPos.x) maxPos.x = p.x;
+                        if (p.y > maxPos.y) maxPos.y = p.y;
+                        if (p.z > maxPos.z) maxPos.z = p.z;
+                    }
+                }
+            }
+
+            _lastMinPos = minPos;
+            _lastSize   = maxPos - minPos;
+            _hasBoundsData = (_qualityMode == QualityMode.Low);
 
             for (int frameIndex = 0; frameIndex < frameCount; frameIndex++)
             {
@@ -341,13 +398,33 @@ namespace VATBaker.Scripts.Editor
 
                     int pixelIndex = y * textureWidth + x;
 
-                    Vector3 position = vertices[vertexIndex];
-                    positionColors[pixelIndex] = new Color(position.x, position.y, position.z, 1.0f);
+                    Vector3 vertex = vertices[vertexIndex];
+                    Vector3 normal = (normals != null && normals.Length > 0) ? normals[vertexIndex] : Vector3.up;
 
-                    if (_bakeNormals)
+                    if (_qualityMode == QualityMode.Low)
                     {
-                        Vector3 normal = normals[vertexIndex];
-                        normalColors[pixelIndex] = new Color(normal.x, normal.y, normal.z, 1.0f);
+                        float px = Mathf.InverseLerp(minPos.x, maxPos.x, vertex.x);
+                        float py = Mathf.InverseLerp(minPos.y, maxPos.y, vertex.y);
+                        float pz = Mathf.InverseLerp(minPos.z, maxPos.z, vertex.z);
+
+                        positionColors[pixelIndex] = new Color(px, py, pz, 1.0f);
+
+                        if (_bakeNormals)
+                        {
+                            float nx = normal.x * 0.5f + 0.5f;
+                            float ny = normal.y * 0.5f + 0.5f;
+                            float nz = normal.z * 0.5f + 0.5f;
+                            normalColors[pixelIndex] = new Color(nx, ny, nz, 1.0f);
+                        }
+                    }
+                    else
+                    {
+                        positionColors[pixelIndex] = new Color(vertex.x, vertex.y, vertex.z, 1.0f);
+
+                        if (_bakeNormals)
+                        {
+                            normalColors[pixelIndex] = new Color(normal.x, normal.y, normal.z, 1.0f);
+                        }
                     }
                 }
             }
@@ -357,37 +434,61 @@ namespace VATBaker.Scripts.Editor
 
             if (_bakeNormals)
             {
-                normalTexture.SetPixels(normalColors);
-                normalTexture.Apply();
+                if (normalTexture != null && normalColors != null)
+                {
+                    normalTexture.SetPixels(normalColors);
+                    normalTexture.Apply();
+                }
             }
+
+            DestroyImmediate(bakingInstance);
 
             string safeObjectName = SanitizeFileName(_targetObject != null ? _targetObject.name : "NoObject");
             string safeClipName = SanitizeFileName(_selectedClip != null ? _selectedClip.name : "NoClip");
             string safeFileName = SanitizeFileName(_fileName);
-            string fullPositionPath = $"{_outputPath}/{safeFileName}_{safeObjectName}_{safeClipName}_Positions.exr";
-            string fullNormalsPath = $"{_outputPath}/{safeFileName}_{safeObjectName}_{safeClipName}_Normals.exr";
-            
-            SaveTexture(positionTexture, fullPositionPath);
-            if (_bakeNormals)
+
+            bool isHigh = (_qualityMode == QualityMode.High);
+            string qualitySuffix = isHigh ? "High" : "Low";
+            string stepSuffix = $"Step{_frameStep}";
+            string posExt = isHigh ? ".exr" : ".png";
+            string normExt = isHigh ? ".exr" : ".png";
+
+            string fullPositionPath = $"{_outputPath}/{safeFileName}_{safeObjectName}_{safeClipName}_{qualitySuffix}_{stepSuffix}_Positions{posExt}";
+            string fullNormalsPath  = $"{_outputPath}/{safeFileName}_{safeObjectName}_{safeClipName}_{qualitySuffix}_{stepSuffix}_Normals{normExt}";
+
+            SaveTexture(positionTexture, fullPositionPath, isHigh);
+            if (_bakeNormals && normalTexture != null)
             {
-                SaveTexture(normalTexture, fullNormalsPath);
+                SaveTexture(normalTexture, fullNormalsPath, isHigh);
             }
 
-            EditorUtility.ClearProgressBar();
-            DestroyImmediate(bakingInstance);
             AssetDatabase.Refresh();
+            EditorUtility.ClearProgressBar();
             Debug.Log("VAT Baking completed successfully!");
+
+            Debug.Log(_qualityMode == QualityMode.Low
+                ? $"[VAT] Low mode. BoundsMin={_lastMinPos} BoundsSize={_lastSize}"
+                : "[VAT] High mode. (No bounds normalization used.)");
         }
         
-        private void SaveTexture(Texture2D texture, string path)
+        private void SaveTexture(Texture2D texture, string path, bool isHigh)
         {
             string directory = System.IO.Path.GetDirectoryName(path);
             if (!System.IO.Directory.Exists(directory))
             {
-                System.IO.Directory.CreateDirectory(directory);
+                if (directory != null) System.IO.Directory.CreateDirectory(directory);
             }
-            byte[] bytes = texture.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
-            System.IO.File.WriteAllBytes(path, bytes);
+
+            if (isHigh)
+            {
+                byte[] bytes = texture.EncodeToEXR(Texture2D.EXRFlags.OutputAsFloat);
+                System.IO.File.WriteAllBytes(path, bytes);
+            }
+            else
+            {
+                byte[] bytes = texture.EncodeToPNG();
+                System.IO.File.WriteAllBytes(path, bytes);
+            }
         }
 
         private string SanitizeFileName(string fileName)
@@ -408,9 +509,10 @@ namespace VATBaker.Scripts.Editor
                 _previewRenderUtility = null;
             }
 
-
-            _previewRenderUtility = new PreviewRenderUtility();
-            _previewRenderUtility.cameraFieldOfView = 30f;
+            _previewRenderUtility = new PreviewRenderUtility
+            {
+                cameraFieldOfView = 30f
+            };
 
             var cameraData = _previewRenderUtility.camera.gameObject.GetComponent<UniversalAdditionalCameraData>();
             if (cameraData == null)

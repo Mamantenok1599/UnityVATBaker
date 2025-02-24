@@ -33,6 +33,7 @@
     { "key": "HelpBoxMesh", "value": "選択したオブジェクトにメッシュが含まれていません。SkinnedMeshRenderer にメッシュを指定してください。" },
     { "key": "HelpBoxAnimator", "value": "選択したオブジェクトに Animator コンポーネントが含まれていません。オブジェクトに Animator コンポーネントを追加してください。" },
     { "key": "HelpBoxAnimations", "value": "Animator コントローラーにアニメーションクリップが含まれていません。コントローラーにアニメーションを追加してください。" },
-    { "key": "HelpBoxAnimatorController", "value": "Animator に指定されたコントローラーがありません。Animator コントローラーを指定してください。" }
+    { "key": "HelpBoxAnimatorController", "value": "Animator に指定されたコントローラーがありません。Animator コントローラーを指定してください。" },
+    { "key": "QualityMode", "value": "クオリティモード" }
   ]
 }
