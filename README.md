@@ -1,3 +1,6 @@
+## Updates:
+- Add Low mode (normalized positions and normals [0..1], TextureFormat.RGBA32)
+
 # Unity VAT Baker ![GitHub License](https://img.shields.io/github/license/Mamantenok1599/UnityVATBaker)
 
 This repository contains a tool for baking Vertex Animation Textures (VAT) directly within Unity. The tool is currently focused on working with SkinnedMeshRenderer components (primarily characters).
